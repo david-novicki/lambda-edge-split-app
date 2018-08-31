@@ -24,7 +24,7 @@ In order to allocate resources and deploy our application to AWS you will need t
 
 To deploy our application you will need to run:
 ```
-serverless deploy
+cd server/ && serverless deploy
 ```
 
 
