@@ -1,5 +1,5 @@
 # Lambda@Edge Split App
-I have created a Proof of Concept for using a split SPA with Lambda@Edge to only deliver full application once authorization is done. This is just an additional level of security for applications posted on the public internet.
+I have created a Proof of Concept for using a split SPA with Lambda@Edge and AWS Cloudfront. It's purpose is to send a partial application (just Sign In app) for unauthenticated users and only deliver the full application when authentication is complete.
 
 Technologies used: Serverless Framework, ReactJS, Webpack, AWS Lambda, AWS Cloudfront, AWS S3.
 
