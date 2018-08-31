@@ -1,0 +1,92 @@
+service: lambda-edge-auth-server # NOTE: update this with your service name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  region: us-east-1
+
+functions:
+  authOnly:
+    handler: handler.authOnly
+    memorySize: 128
+    timeout: 1
+    lambdaAtEdge:
+      distribution: "App1Distribution"
+      eventType: "viewer-request"
+      pathPattern: "private/*"
+
+plugins:
+  - serverless-s3-sync
+  - serverless-plugin-cloudfront-lambda-edge
+
+custom:
+  s3Sync:
+    - bucketName: public-app # required
+      localDir: ../build/signIn # required
+      acl: public-read # optional
+      followSymlinks: true # optional
+      defaultContentType: text/html # optional
+      params: # optional
+        - index.html:
+            CacheControl: "no-cache"
+        - "*.js":
+            CacheControl: "public, max-age=31536000"
+    - bucketName: private-app
+      localDir: ../build/main
+
+resources:
+  Resources:
+    PublicAppBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: public-app
+        AccessControl: PublicRead
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: error.html
+    PrivateAppBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: private-app
+    App1Distribution:
+      Type: "AWS::CloudFront::Distribution"
+      Properties:
+        DistributionConfig:
+          DefaultCacheBehavior:
+            TargetOriginId: "PublicAppOrigin"
+            ViewerProtocolPolicy: "redirect-to-https"
+            DefaultTTL: 600 # ten minutes
+            MaxTTL: 600 # ten minutes
+            Compress: true
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: "none"
+          CacheBehaviors:
+            - TargetOriginId: PrivateAppOrigin
+              DefaultTTL: 600 # ten minutes
+              MaxTTL: 600 # ten minutes
+              ViewerProtocolPolicy: "redirect-to-https"
+              ForwardedValues:
+                QueryString: false
+                Cookies:
+                  Forward: "none"
+              PathPattern: private/*
+          DefaultRootObject: "index.html"
+          Enabled: true
+          PriceClass: "PriceClass_100"
+          HttpVersion: "http2"
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: true
+          Origins:
+            - DomainName: public-app.s3.amazonaws.com
+              Id: "PublicAppOrigin"
+              S3OriginConfig: {}
+            - DomainName: private-app.s3.amazonaws.com
+              Id: "PrivateAppOrigin"
+              S3OriginConfig: {}
